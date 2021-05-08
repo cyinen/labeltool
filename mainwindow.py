@@ -9,13 +9,21 @@
 import os
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget, QListView, QAbstractItemView, QTreeView, QPlainTextEdit
+from PyQt5.QtGui import QPainter, QPen
+from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget, QListView, QAbstractItemView, QTreeView, QPlainTextEdit, \
+    QMainWindow
 from PIL import Image
 
 
-class Ui_MainWindow(QWidget):
+class Ui_MainWindow(QMainWindow):
     filelists = []
     imgs = ['png','jpg','JPEG','bmp','JPG']
+    index = 0
+    savePath = ""
+
+    def __init__(self):
+        super(Ui_MainWindow, self).__init__()
+        self.rect = None
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -137,6 +145,9 @@ class Ui_MainWindow(QWidget):
     def initSignasAndSolts(self):
         self.pushButton_openFile.clicked.connect(self.openFile)
         self.pushButton_openDir.clicked.connect(self.openDirs)
+        self.pushButton_nextImg.clicked.connect(self.nextImg)
+        self.pushButton_lastImg.clicked.connect(self.lastImg)
+        self.pushButton_changeSavePath.clicked.connect(self.chooseSavePath)
 
     def openFile(self):
         dig = QFileDialog()
@@ -152,7 +163,7 @@ class Ui_MainWindow(QWidget):
         fileDlg = QFileDialog()
         fileDlg.setFileMode(QFileDialog.DirectoryOnly)
         fileDlg.setOption(QFileDialog.DontUseNativeDialog, True)
-        fileDlg.setDirectory("./")
+        fileDlg.setDirectory("~/Pictures")
         listView = fileDlg.findChild(QListView, "listView")
         if listView:
             listView.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -163,19 +174,92 @@ class Ui_MainWindow(QWidget):
             folders = fileDlg.selectedFiles()
             if len(folders) < 1:
                 return
+            self.savePath = folders[0]
             for file in os.listdir(folders[0]):
                 file  = folders[0] + "/" + file
                 self.filelists.append(file)
                 self.plainTextEdit_fileLists.appendPlainText(file)
-        self.showImg(self.filelists[0])
+        if len(self.filelists) > 0:
+            self.showImg(self.filelists[0])
 
     def showImg(self, filename):
         if filename.split(".")[-1] not in self.imgs:
             msg_box = QMessageBox(QMessageBox.Warning, 'Warning', '图片格式只能是常见格式！')
             msg_box.exec_()
+            return
         img = Image.open(filename)
         size = self.label_display.size()
         size = (size.width(), size.height())
         img = img.resize(size)
         img = img.toqpixmap()
         self.label_display.setPixmap(img)
+
+    def nextImg(self):
+        if self.index == len(self.filelists)-1:
+            self.pushButton_nextImg.setEnabled(False)
+            return
+        else:
+            self.pushButton_lastImg.setEnabled(True)
+            self.index += 1
+            self.showImg(self.filelists[self.index])
+
+    def lastImg(self):
+        if self.index == 0:
+            self.pushButton_lastImg.setEnabled(False)
+            return
+        else:
+            self.pushButton_nextImg.setEnabled(True)
+            self.index -= 1
+            self.showImg(self.filelists[self.index])
+
+    def chooseSavePath(self):
+        fileDlg = QFileDialog()
+        fileDlg.setFileMode(QFileDialog.DirectoryOnly)
+        fileDlg.setOption(QFileDialog.DontUseNativeDialog, True)
+        fileDlg.setDirectory("~/Pictures")
+        listView = fileDlg.findChild(QListView, "listView")
+        if listView:
+            listView.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        treeView = fileDlg.findChild(QTreeView, "treeView")
+        if treeView:
+            treeView.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        if fileDlg.exec_():
+            folders = fileDlg.selectedFiles()
+            if len(folders) < 1:
+                return
+            self.savePath = folders[0]
+        print("当前存放路径", self.savePath)
+
+    # 重写绘制函数
+    def paintEvent(self, event):
+        # 初始化绘图工具
+        qp = QPainter()
+        # 开始在窗口绘制
+        qp.begin(self)
+        # 自定义画点方法
+        if self.rect:
+            self.drawRect(qp)
+        # 结束在窗口的绘制
+        qp.end()
+
+    def drawRect(self, qp):
+        # 创建红色，宽度为4像素的画笔
+        pen = QPen(QtCore.Qt.red,1)
+        qp.setPen(pen)
+        qp.drawRect(*self.rect)
+
+    # 重写三个时间处理
+    def mousePressEvent(self, event):
+        print("mouse press")
+        self.rect = (event.x(), event.y(), 0, 0)
+        print(event.x(), event.y())
+
+    def mouseReleaseEvent(self, event):
+        print(event.x(), event.y())
+        print("mouse release")
+
+    def mouseMoveEvent(self, event):
+        start_x, start_y = self.rect[0:2]
+        self.rect = (start_x, start_y, event.x() - start_x, event.y() - start_y)
+        self.update()
+
