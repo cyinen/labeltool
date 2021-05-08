@@ -20,15 +20,18 @@ class Ui_MainWindow(QMainWindow):
     imgs = ['png','jpg','JPEG','bmp','JPG']
     index = 0
     savePath = ""
+    imgSize = None
 
-    def __init__(self):
-        super(Ui_MainWindow, self).__init__()
+    def __init__(self, parent=None):
+        super(Ui_MainWindow, self).__init__(parent)
+        self.textEdit = QtWidgets.QLineEdit(self)
         self.rect = None
+        self.setupUi()
 
-    def setupUi(self, MainWindow):
-        MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1500, 927)
-        self.centralwidget = QtWidgets.QWidget(MainWindow)
+    def setupUi(self):
+        self.setObjectName("MainWindow")
+        self.resize(1500, 927)
+        self.centralwidget = QtWidgets.QWidget(self)
         self.centralwidget.setObjectName("centralwidget")
         self.label_display = QtWidgets.QLabel(self.centralwidget)
         self.label_display.setGeometry(QtCore.QRect(220, 0, 981, 851))
@@ -87,8 +90,8 @@ class Ui_MainWindow(QMainWindow):
         self.pushButton_Exit.setObjectName("pushButton_Exit")
         self.verticalLayout.addWidget(self.pushButton_Exit)
         self.verticalLayout_3.addWidget(self.widget)
-        MainWindow.setCentralWidget(self.centralwidget)
-        self.menubar = QtWidgets.QMenuBar(MainWindow)
+        self.setCentralWidget(self.centralwidget)
+        self.menubar = QtWidgets.QMenuBar(self)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1500, 35))
         self.menubar.setObjectName("menubar")
         self.menu = QtWidgets.QMenu(self.menubar)
@@ -99,15 +102,15 @@ class Ui_MainWindow(QMainWindow):
         self.menu_V.setObjectName("menu_V")
         self.menu_H = QtWidgets.QMenu(self.menubar)
         self.menu_H.setObjectName("menu_H")
-        MainWindow.setMenuBar(self.menubar)
-        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        self.setMenuBar(self.menubar)
+        self.statusbar = QtWidgets.QStatusBar(self)
         self.statusbar.setObjectName("statusbar")
-        MainWindow.setStatusBar(self.statusbar)
-        self.action = QtWidgets.QAction(MainWindow)
+        self.setStatusBar(self.statusbar)
+        self.action = QtWidgets.QAction(self)
         self.action.setObjectName("action")
-        self.action_2 = QtWidgets.QAction(MainWindow)
+        self.action_2 = QtWidgets.QAction(self)
         self.action_2.setObjectName("action_2")
-        self.action_3 = QtWidgets.QAction(MainWindow)
+        self.action_3 = QtWidgets.QAction(self)
         self.action_3.setObjectName("action_3")
         self.menu.addAction(self.action)
         self.menu_E.addAction(self.action_2)
@@ -117,12 +120,12 @@ class Ui_MainWindow(QMainWindow):
         self.menubar.addAction(self.menu_V.menuAction())
         self.menubar.addAction(self.menu_H.menuAction())
 
-        self.retranslateUi(MainWindow)
-        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+        self.retranslateUi()
+        QtCore.QMetaObject.connectSlotsByName(self)
 
-    def retranslateUi(self, MainWindow):
+    def retranslateUi(self):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        self.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.label_display.setText(_translate("MainWindow", ""))
         self.label_2.setText(_translate("MainWindow", "文件列表"))
         self.pushButton_openFile.setText(_translate("MainWindow", "打开文件"))
@@ -139,7 +142,8 @@ class Ui_MainWindow(QMainWindow):
         self.action.setText(_translate("MainWindow", "打开"))
         self.action_2.setText(_translate("MainWindow", "撤销"))
         self.action_3.setText(_translate("MainWindow", "点我跳转"))
-        self.pushButton_Exit.clicked.connect(MainWindow.close)
+        self.pushButton_Exit.clicked.connect(self.close)
+        self.plainTextEdit_fileLists.setReadOnly(True)
         self.initSignasAndSolts()
 
     def initSignasAndSolts(self):
@@ -148,6 +152,7 @@ class Ui_MainWindow(QMainWindow):
         self.pushButton_nextImg.clicked.connect(self.nextImg)
         self.pushButton_lastImg.clicked.connect(self.lastImg)
         self.pushButton_changeSavePath.clicked.connect(self.chooseSavePath)
+        self.pushButton_Save.clicked.connect(self.saveData)
 
     def openFile(self):
         dig = QFileDialog()
@@ -176,7 +181,7 @@ class Ui_MainWindow(QMainWindow):
                 return
             self.savePath = folders[0]
             for file in os.listdir(folders[0]):
-                file  = folders[0] + "/" + file
+                file = folders[0] + "/" + file
                 self.filelists.append(file)
                 self.plainTextEdit_fileLists.appendPlainText(file)
         if len(self.filelists) > 0:
@@ -188,6 +193,7 @@ class Ui_MainWindow(QMainWindow):
             msg_box.exec_()
             return
         img = Image.open(filename)
+        self.imgSize = img.size
         size = self.label_display.size()
         size = (size.width(), size.height())
         img = img.resize(size)
@@ -244,22 +250,41 @@ class Ui_MainWindow(QMainWindow):
 
     def drawRect(self, qp):
         # 创建红色，宽度为4像素的画笔
-        pen = QPen(QtCore.Qt.red,1)
+        pen = QPen(QtCore.Qt.blue, 1)
         qp.setPen(pen)
         qp.drawRect(*self.rect)
 
     # 重写三个时间处理
     def mousePressEvent(self, event):
-        print("mouse press")
-        self.rect = (event.x(), event.y(), 0, 0)
-        print(event.x(), event.y())
+        if self.isInArea(event):
+            self.rect = (event.x(), event.y(), 0, 0)
 
     def mouseReleaseEvent(self, event):
-        print(event.x(), event.y())
-        print("mouse release")
+        if self.rect[0] == event.x():
+            return
+        if self.isInArea(event):
+            self.textEdit.setGeometry(QtCore.QRect(event.x(), event.y(), 200, 50))
+            self.textEdit.setObjectName("textEdit")
+            self.textEdit.show()
 
     def mouseMoveEvent(self, event):
-        start_x, start_y = self.rect[0:2]
-        self.rect = (start_x, start_y, event.x() - start_x, event.y() - start_y)
-        self.update()
+        if self.isInArea(event):
+            start_x, start_y = self.rect[0:2]
+            self.rect = (start_x, start_y, event.x() - start_x, event.y() - start_y)
+            self.update()
+
+    def isInArea(self, event):
+        if 220 < event.x() < 981 and 0 < event.y() < 851:
+            return True
+        else:
+            return False
+
+    def saveData(self):
+        print(self.imgSize)
+        for i in self.rect:
+            print(i)
+        print(self.textEdit.text())
+        self.textEdit.clear()
+
+
 
