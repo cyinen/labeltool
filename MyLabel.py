@@ -1,14 +1,20 @@
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QPen, QPainter, QColor
 from PyQt5.QtWidgets import QLabel
 from PyQt5 import QtCore, QtWidgets
-import sys
 
 
 class MyLabel(QLabel):
-    rect = None
+    sendDataSig = pyqtSignal(list)
 
-    def __int__(self):
-        super(MyLabel, self).__init__()
+    def __init__(self, parent=None):
+        super(MyLabel, self).__init__(parent)
+        self.setWindowTitle('拖拽绘制矩形')
+        self.rect = None
+        self.textEdit = QtWidgets.QLineEdit(self)
+        self.textEdit.setHidden(True)
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground, False)
+        self.textEdit.returnPressed.connect(self.getData)
 
     # 重写绘制函数
     def paintEvent(self, event):
@@ -24,19 +30,22 @@ class MyLabel(QLabel):
 
     def drawRect(self, qp):
         # 创建红色，宽度为4像素的画笔
-        pen = QPen(QColor(0, 255, 0), 2)
+        pen = QPen(QColor(0,255,0), 2)
         qp.setPen(pen)
         qp.drawRect(*self.rect)
 
     # 重写三个时间处理
     def mousePressEvent(self, event):
-        print("mouse press")
         self.rect = (event.x(), event.y(), 0, 0)
-        print(event.x(), event.y())
 
     def mouseReleaseEvent(self, event):
-        print(event.x(), event.y())
-        print("mouse release")
+        if not self.rect:
+            return
+        if self.rect[0] == event.x():
+            return
+        self.textEdit.setGeometry(QtCore.QRect(event.x(), event.y(), 200, 50))
+        self.textEdit.setObjectName("textEdit")
+        self.textEdit.show()
 
     def mouseMoveEvent(self, event):
         start_x, start_y = self.rect[0:2]
@@ -44,5 +53,8 @@ class MyLabel(QLabel):
         self.update()
 
     def getData(self):
-        return self.rect
-
+        strs = self.textEdit.text()
+        self.textEdit.clear()
+        self.sendDataSig.emit([self.rect, strs])
+        self.textEdit.setHidden(True)
+        # return self.rect, strs
